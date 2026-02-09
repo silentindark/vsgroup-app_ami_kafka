@@ -1,0 +1,22 @@
+;
+; AMI Events Kafka Publisher Configuration
+;
+; This module captures all AMI (Asterisk Manager Interface) events via
+; an internal hook and publishes them to a Kafka topic via res_kafka.
+;
+
+[general]
+; Enable or disable the module (yes/no)
+enabled = yes
+
+; Output format: json or ami (default: json)
+;   json - parses AMI key/value pairs into a JSON object
+;   ami  - publishes the raw AMI text as-is
+format = json
+
+[kafka]
+; Name of the connection defined in kafka.conf (res_kafka)
+connection = my-kafka
+
+; Kafka topic to publish AMI events to
+topic = asterisk_ami

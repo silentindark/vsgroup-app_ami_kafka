@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE docs SYSTEM "appdocsxml.dtd">
+<docs xmlns:xi="http://www.w3.org/2001/XInclude">
+	<configInfo name="app_ami_kafka" language="en_US">
+		<synopsis>AMI Events to Kafka</synopsis>
+		<description>
+			<para>This module captures all Asterisk Manager Interface (AMI) events
+			using an internal manager hook and publishes them to a Kafka topic
+			via res_kafka.</para>
+			<para>Events can be published in JSON format (parsed from AMI key-value
+			pairs) or as raw AMI text. The Kafka message key is set to the AMI
+			event name for natural partitioning.</para>
+		</description>
+		<configFile name="ami_kafka.conf">
+			<configObject name="general">
+				<synopsis>General configuration settings</synopsis>
+				<configOption name="enabled">
+					<synopsis>Enable or disable the module</synopsis>
+					<description>
+						<para>Set to <literal>yes</literal> to enable publishing
+						AMI events to Kafka. Default is <literal>yes</literal>.</para>
+					</description>
+				</configOption>
+				<configOption name="format">
+					<synopsis>Output format for AMI events</synopsis>
+					<description>
+						<para>Set to <literal>json</literal> to parse AMI events into
+						JSON objects, or <literal>ami</literal> to publish the raw AMI
+						text as-is. Default is <literal>json</literal>.</para>
+					</description>
+				</configOption>
+			</configObject>
+			<configObject name="kafka">
+				<synopsis>Kafka connection and topic settings</synopsis>
+				<configOption name="connection">
+					<synopsis>Name of the connection from kafka.conf to use</synopsis>
+					<description>
+						<para>This must match a connection name defined in
+						<filename>kafka.conf</filename> for res_kafka.</para>
+					</description>
+				</configOption>
+				<configOption name="topic">
+					<synopsis>Kafka topic to publish events to</synopsis>
+					<description>
+						<para>Defaults to <literal>asterisk_ami</literal>.</para>
+					</description>
+				</configOption>
+			</configObject>
+		</configFile>
+	</configInfo>
+</docs>
