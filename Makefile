@@ -25,7 +25,7 @@ CONFNAME = $(basename $(SAMPLENAME))
 
 TARGET = app_ami_kafka.so
 OBJECTS = app_ami_kafka.o
-CFLAGS += -I../wazo-res-kafka
+CFLAGS += -I../vsgroup-res_kafka
 CFLAGS += -DHAVE_STDINT_H=1
 CFLAGS += -Wall -Wextra -Wno-unused-parameter -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Winit-self -Wmissing-format-attribute \
           -Wformat=2 -g -fPIC -D_GNU_SOURCE -D'AST_MODULE="app_ami_kafka"' -D'AST_MODULE_SELF_SYM=__internal_app_ami_kafka_self'
