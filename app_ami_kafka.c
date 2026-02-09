@@ -364,7 +364,7 @@ static void event_filter_dtor(void *obj)
  * \retval 0 on success
  * \retval -1 on failure
  */
-static int add_filter(const char *criteria, const char *filter_pattern,
+int add_filter(const char *criteria, const char *filter_pattern,
 	struct ao2_container *includefilters, struct ao2_container *excludefilters)
 {
 	struct event_filter_entry *filter_entry;
@@ -606,7 +606,7 @@ static int add_filter(const char *criteria, const char *filter_pattern,
  * \retval 0 no match
  * \retval 1 match
  */
-static int match_eventdata(struct event_filter_entry *entry, const char *eventdata)
+int match_eventdata(struct event_filter_entry *entry, const char *eventdata)
 {
 	switch (entry->match_type) {
 	case FILTER_MATCH_REGEX:
@@ -709,7 +709,7 @@ done:
  * \retval 1 event should be sent
  * \retval 0 event should be filtered out
  */
-static int should_send_event(struct ao2_container *includefilters,
+int should_send_event(struct ao2_container *includefilters,
 	struct ao2_container *excludefilters, const char *event, const char *body)
 {
 	struct filter_cmp_args args = {
@@ -797,7 +797,7 @@ static int eventfilter_handler(const struct aco_option *opt,
  * \return A new ast_json object on success.
  * \return NULL on failure.
  */
-static struct ast_json *ami_body_to_json(const char *event, char *body)
+struct ast_json *ami_body_to_json(const char *event, char *body)
 {
 	struct ast_json *json;
 	char *copy;
