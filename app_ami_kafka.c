@@ -87,8 +87,10 @@
 #include "asterisk/kafka.h"
 #include "asterisk/manager.h"
 #include "asterisk/module.h"
+#include "asterisk/paths.h"
 #include "asterisk/stringfields.h"
 #include "asterisk/strings.h"
+#include "asterisk/utils.h"
 
 #define CONF_FILENAME "ami_kafka.conf"
 
@@ -809,6 +811,17 @@ static struct ast_json *ami_body_to_json(const char *event, char *body)
 
 	ast_json_object_set(json, "Event", ast_json_string_create(event));
 
+	/* Inject system identification (same fields the AMI manager exposes) */
+	{
+		char eid_str[20];
+		ast_eid_to_str(eid_str, sizeof(eid_str), &ast_eid_default);
+		ast_json_object_set(json, "EntityID", ast_json_string_create(eid_str));
+	}
+	if (!ast_strlen_zero(ast_config_AST_SYSTEM_NAME)) {
+		ast_json_object_set(json, "SystemName",
+			ast_json_string_create(ast_config_AST_SYSTEM_NAME));
+	}
+
 	copy = ast_strdupa(body);
 
 	for (line = strtok_r(copy, "\r\n", &saveptr); line;
@@ -851,6 +864,7 @@ static int ami_hook_callback(int category, const char *event, char *body)
 	size_t payload_len;
 	RAII_VAR(struct ast_json *, json, NULL, ast_json_unref);
 	RAII_VAR(char *, json_str, NULL, ast_json_free);
+	RAII_VAR(struct ast_str *, ami_buf, NULL, ast_free);
 
 	if (!conf || !conf->general || !conf->general->enabled) {
 		return 0;
@@ -886,9 +900,25 @@ static int ami_hook_callback(int category, const char *event, char *body)
 		payload = json_str;
 		payload_len = strlen(json_str);
 	} else {
-		/* AMI format: publish raw body as-is (zero-copy) */
-		payload = body;
-		payload_len = strlen(body);
+		/* AMI format: prepend system identification headers */
+		char eid_str[20];
+		ast_eid_to_str(eid_str, sizeof(eid_str), &ast_eid_default);
+
+		ami_buf = ast_str_create(strlen(body) + 128);
+		if (!ami_buf) {
+			ao2_cleanup(producer);
+			return 0;
+		}
+
+		ast_str_set(&ami_buf, 0, "EntityID: %s\r\n", eid_str);
+		if (!ast_strlen_zero(ast_config_AST_SYSTEM_NAME)) {
+			ast_str_append(&ami_buf, 0, "SystemName: %s\r\n",
+				ast_config_AST_SYSTEM_NAME);
+		}
+		ast_str_append(&ami_buf, 0, "%s", body);
+
+		payload = ast_str_buffer(ami_buf);
+		payload_len = ast_str_strlen(ami_buf);
 	}
 
 	ast_kafka_produce(producer, conf->kafka->topic, event, payload, payload_len);
