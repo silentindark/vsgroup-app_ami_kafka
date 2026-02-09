@@ -14,6 +14,28 @@ enabled = yes
 ;   ami  - publishes the raw AMI text as-is
 format = json
 
+; Event filters (same syntax as Asterisk manager.conf eventfilter)
+;
+; Without any filters, all AMI events are published.
+;
+; Logic:
+;   - Include filters only: only matching events are published
+;   - Exclude filters only: all events except matching ones are published
+;   - Both: include filters are evaluated first, then exclude filters
+;
+; Legacy syntax (regex applied to the full AMI body):
+;eventfilter = Event: Newchannel
+;eventfilter = !Channel: Local/
+;
+; Advanced syntax (more efficient, avoids regex):
+;eventfilter(action(include),name(Newchannel)) =
+;eventfilter(action(include),name(Hangup)) =
+;eventfilter(action(exclude),header(Channel),method(starts_with)) = Local/
+;
+; Available methods: regex, exact, starts_with, ends_with, contains, none
+; When only name() is specified with no value, method defaults to "none"
+; (matches any event with that name regardless of content).
+
 [kafka]
 ; Name of the connection defined in kafka.conf (res_kafka)
 connection = my-kafka

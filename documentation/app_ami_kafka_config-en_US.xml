@@ -29,6 +29,25 @@
 						text as-is. Default is <literal>json</literal>.</para>
 					</description>
 				</configOption>
+				<configOption name="eventfilter" regex="true">
+					<synopsis>Filter AMI events before publishing to Kafka</synopsis>
+					<description>
+						<para>Specifies event filters using the same syntax as Asterisk
+						<filename>manager.conf</filename>. Multiple eventfilter lines
+						can be specified. Without any filters, all events are published.</para>
+						<para>Legacy syntax (regex applied to the full AMI body):</para>
+						<para><literal>eventfilter = Event: Newchannel</literal> (include)</para>
+						<para><literal>eventfilter = !Channel: Local/</literal> (exclude)</para>
+						<para>Advanced syntax:</para>
+						<para><literal>eventfilter(action(include),name(Newchannel)) =</literal></para>
+						<para><literal>eventfilter(action(exclude),header(Channel),method(starts_with)) = Local/</literal></para>
+						<para>Available methods: regex, exact, starts_with, ends_with,
+						contains, none.</para>
+						<para>Filter logic: include-only sends only matching events;
+						exclude-only sends all except matching; both evaluates includes
+						first then excludes.</para>
+					</description>
+				</configOption>
 			</configObject>
 			<configObject name="kafka">
 				<synopsis>Kafka connection and topic settings</synopsis>
