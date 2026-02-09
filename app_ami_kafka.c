@@ -81,6 +81,7 @@
 #include "asterisk.h"
 
 #include <regex.h>
+#include <unistd.h>
 
 #include "asterisk/config_options.h"
 #include "asterisk/json.h"
@@ -91,8 +92,12 @@
 #include "asterisk/stringfields.h"
 #include "asterisk/strings.h"
 #include "asterisk/utils.h"
+#include "asterisk/ast_version.h"
 
 #define CONF_FILENAME "ami_kafka.conf"
+
+/*! \brief Cached hostname, set once during load_module(). */
+static char cached_hostname[256];
 
 /*! \brief Output format for AMI events */
 enum ami_kafka_format {
@@ -853,6 +858,60 @@ struct ast_json *ami_body_to_json(const char *event, char *body)
 }
 
 /*!
+ * \brief Convert an AMI event category bitmask to a comma-separated string.
+ *
+ * Iterates the EVENT_FLAG_* bits and appends each matching category name.
+ * The result is written into the caller-supplied buffer.
+ *
+ * \param category Bitmask of EVENT_FLAG_* values.
+ * \param buf Destination buffer.
+ * \param buflen Size of the destination buffer.
+ */
+static void category_to_str(int category, char *buf, size_t buflen)
+{
+	static const struct {
+		int flag;
+		const char *name;
+	} flags[] = {
+		{ EVENT_FLAG_SYSTEM,    "system" },
+		{ EVENT_FLAG_CALL,      "call" },
+		{ EVENT_FLAG_LOG,       "log" },
+		{ EVENT_FLAG_VERBOSE,   "verbose" },
+		{ EVENT_FLAG_COMMAND,   "command" },
+		{ EVENT_FLAG_AGENT,     "agent" },
+		{ EVENT_FLAG_USER,      "user" },
+		{ EVENT_FLAG_CONFIG,    "config" },
+		{ EVENT_FLAG_DTMF,      "dtmf" },
+		{ EVENT_FLAG_REPORTING, "reporting" },
+		{ EVENT_FLAG_CDR,       "cdr" },
+		{ EVENT_FLAG_DIALPLAN,  "dialplan" },
+		{ EVENT_FLAG_ORIGINATE, "originate" },
+		{ EVENT_FLAG_AGI,       "agi" },
+		{ EVENT_FLAG_CC,        "cc" },
+		{ EVENT_FLAG_AOC,       "aoc" },
+		{ EVENT_FLAG_TEST,      "test" },
+		{ EVENT_FLAG_SECURITY,  "security" },
+		{ EVENT_FLAG_MESSAGE,   "message" },
+	};
+	size_t i;
+	size_t pos = 0;
+
+	buf[0] = '\0';
+	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
+		if (category & flags[i].flag) {
+			const char *p = flags[i].name;
+			if (pos > 0 && pos < buflen - 1) {
+				buf[pos++] = ',';
+			}
+			while (*p && pos < buflen - 1) {
+				buf[pos++] = *p++;
+			}
+		}
+	}
+	buf[pos] = '\0';
+}
+
+/*!
  * \brief AMI hook callback — hot path.
  *
  * Called synchronously for every AMI event under a read-lock in manager.c.
@@ -929,7 +988,56 @@ static int ami_hook_callback(int category, const char *event, char *body)
 		payload_len = ast_str_strlen(ami_buf);
 	}
 
-	ast_kafka_produce(producer, conf->kafka->topic, event, payload, payload_len);
+	/* Build Kafka message headers */
+	{
+		char eid_str[20];
+		char cat_str[256];
+		char ts_str[32];
+		struct ast_kafka_header hdrs[8];
+		size_t hdr_count = 0;
+
+		ast_eid_to_str(eid_str, sizeof(eid_str), &ast_eid_default);
+		category_to_str(category, cat_str, sizeof(cat_str));
+		snprintf(ts_str, sizeof(ts_str), "%ld", (long) time(NULL));
+
+		hdrs[hdr_count].name = "entity_id";
+		hdrs[hdr_count].value = eid_str;
+		hdr_count++;
+
+		if (!ast_strlen_zero(ast_config_AST_SYSTEM_NAME)) {
+			hdrs[hdr_count].name = "system_name";
+			hdrs[hdr_count].value = ast_config_AST_SYSTEM_NAME;
+			hdr_count++;
+		}
+
+		hdrs[hdr_count].name = "asterisk_version";
+		hdrs[hdr_count].value = ast_get_version();
+		hdr_count++;
+
+		hdrs[hdr_count].name = "event_type";
+		hdrs[hdr_count].value = event;
+		hdr_count++;
+
+		hdrs[hdr_count].name = "event_category";
+		hdrs[hdr_count].value = cat_str;
+		hdr_count++;
+
+		hdrs[hdr_count].name = "format";
+		hdrs[hdr_count].value =
+			(conf->general->format == AMI_KAFKA_FORMAT_JSON) ? "json" : "ami";
+		hdr_count++;
+
+		hdrs[hdr_count].name = "timestamp";
+		hdrs[hdr_count].value = ts_str;
+		hdr_count++;
+
+		hdrs[hdr_count].name = "hostname";
+		hdrs[hdr_count].value = cached_hostname;
+		hdr_count++;
+
+		ast_kafka_produce_hdrs(producer, conf->kafka->topic, event,
+			payload, payload_len, hdrs, hdr_count);
+	}
 
 	ao2_cleanup(producer);
 	return 0;
@@ -959,6 +1067,10 @@ static int load_config(int reload)
 static int load_module(void)
 {
 	RAII_VAR(struct ami_kafka_conf *, conf, NULL, ao2_cleanup);
+
+	if (gethostname(cached_hostname, sizeof(cached_hostname)) != 0) {
+		ast_copy_string(cached_hostname, "unknown", sizeof(cached_hostname));
+	}
 
 	if (aco_info_init(&cfg_info) != 0) {
 		ast_log(LOG_ERROR, "Failed to initialize config\n");

@@ -98,6 +98,42 @@ int ast_kafka_produce(struct ast_kafka_producer *producer,
 	size_t len);
 
 /*!
+ * \brief Key-value pair for Kafka message headers.
+ *
+ * Used with \ref ast_kafka_produce_hdrs() to attach metadata headers
+ * to produced messages. Both name and value must be non-NULL.
+ */
+struct ast_kafka_header {
+	const char *name;
+	const char *value;
+};
+
+/*!
+ * \brief Produces a message to a Kafka topic with optional headers.
+ *
+ * Behaves identically to \ref ast_kafka_produce() but also attaches
+ * key-value headers to the message. If \a headers is NULL or
+ * \a header_count is 0, no headers are attached.
+ *
+ * \param producer The producer to use.
+ * \param topic The topic to produce to.
+ * \param key The message key (may be NULL).
+ * \param payload The message payload.
+ * \param len The length of the payload.
+ * \param headers Array of key-value header pairs (may be NULL).
+ * \param header_count Number of headers in the array.
+ * \return 0 on success.
+ * \return -1 on failure.
+ */
+int ast_kafka_produce_hdrs(struct ast_kafka_producer *producer,
+	const char *topic,
+	const char *key,
+	const void *payload,
+	size_t len,
+	const struct ast_kafka_header *headers,
+	size_t header_count);
+
+/*!
  * \brief Gets the given Kafka consumer.
  *
  * The returned consumer is an AO2 managed object, which must be freed with
