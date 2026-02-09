@@ -128,6 +128,14 @@ struct event_filter_entry {
 	char *header_name;           /*!< NULL = full body, "Header:" = specific header */
 };
 
+/* Forward declarations for exported (non-static) test-accessible functions */
+int add_filter(const char *criteria, const char *filter_pattern,
+	struct ao2_container *includefilters, struct ao2_container *excludefilters);
+int match_eventdata(struct event_filter_entry *entry, const char *eventdata);
+int should_send_event(struct ao2_container *includefilters,
+	struct ao2_container *excludefilters, const char *event, const char *body);
+struct ast_json *ami_body_to_json(const char *event, char *body);
+
 /*! \brief General configuration */
 struct ami_kafka_conf_general {
 	/*! \brief whether the module is enabled */
