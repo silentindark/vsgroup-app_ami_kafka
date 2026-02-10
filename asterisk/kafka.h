@@ -188,4 +188,22 @@ int ast_kafka_consumer_unsubscribe(struct ast_kafka_consumer *consumer);
 int ast_kafka_ensure_topic(struct ast_kafka_producer *producer,
 	const char *topic, int num_partitions, int replication_factor);
 
+/*!
+ * \brief Asynchronously ensure a Kafka topic exists, creating it if necessary.
+ *
+ * Non-blocking version of \ref ast_kafka_ensure_topic(). The topic creation
+ * request is queued on an internal taskprocessor and executed in the
+ * background. This is suitable for use in \c load_module() where blocking
+ * would delay Asterisk startup when brokers are unreachable.
+ *
+ * \param producer The producer whose connection is used for admin operations.
+ * \param topic The topic name to ensure.
+ * \param num_partitions Number of partitions (used only on creation).
+ * \param replication_factor Replication factor (used only on creation).
+ * \return 0 if the task was queued successfully.
+ * \return -1 on failure (invalid arguments or taskprocessor error).
+ */
+int ast_kafka_ensure_topic_async(struct ast_kafka_producer *producer,
+	const char *topic, int num_partitions, int replication_factor);
+
 #endif /* _ASTERISK_KAFKA_H */
