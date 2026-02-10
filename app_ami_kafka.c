@@ -50,7 +50,7 @@
 						as-is. Default is <literal>json</literal>.</para>
 					</description>
 				</configOption>
-				<configOption name="eventfilter" regex="true">
+				<configOption name="^eventfilter" regex="true">
 					<synopsis>Filter AMI events before publishing to Kafka</synopsis>
 					<description>
 						<para>Same syntax as Asterisk manager.conf eventfilter.
